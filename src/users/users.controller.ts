@@ -1,8 +1,12 @@
 import { Inject, Controller } from '@nestjs/common';
-import { ClientGrpc } from '@nestjs/microservices';
+import { ClientGrpcProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
 
-import { UsersServiceClient, USERS_SERVICE_NAME } from './users.pb';
+import {
+  UsersServiceClient,
+  USERS_SERVICE_NAME,
+  UsersServiceController,
+} from './users.pb';
 
 import type {
   CreateUserRequest,
@@ -11,25 +15,30 @@ import type {
   UpdateUserResponse,
   DeleteUserRequest,
   DeleteUserResponse,
+  Empty,
+  GetUserByIdRequest,
+  GetUserByIdResponse,
+  GetUsersResponse,
 } from './users.pb';
 
 @Controller('users')
-export class UsersController {
-  private usersServiceClient: UsersServiceClient;
+export class UsersController implements UsersServiceController {
+  constructor(
+    @Inject('UsersServiceClient')
+    private readonly usersServiceClient: ClientGrpcProxy,
+  ) {}
+  private usersService: UsersServiceClient;
 
-  @Inject(USERS_SERVICE_NAME)
-  private readonly usersClient: ClientGrpc;
-
-  public onModuleInit(): void {
-    this.usersServiceClient =
-      this.usersClient.getService<UsersServiceClient>(USERS_SERVICE_NAME);
+  onModuleInit(): void {
+    this.usersService =
+      this.usersServiceClient.getService<UsersServiceClient>(USERS_SERVICE_NAME);
   }
 
   async createUser(
     createUserRequest: CreateUserRequest,
   ): Promise<CreateUserResponse> {
     return firstValueFrom(
-      this.usersServiceClient.createUser(createUserRequest),
+      this.usersService.createUser(createUserRequest),
     );
   }
 
@@ -37,7 +46,7 @@ export class UsersController {
     updateUserRequest: UpdateUserRequest,
   ): Promise<UpdateUserResponse> {
     return firstValueFrom(
-      this.usersServiceClient.updateUser(updateUserRequest),
+      this.usersService.updateUser(updateUserRequest),
     );
   }
 
@@ -45,7 +54,19 @@ export class UsersController {
     deleteUserRequest: DeleteUserRequest,
   ): Promise<DeleteUserResponse> {
     return firstValueFrom(
-      this.usersServiceClient.deleteUser(deleteUserRequest),
+      this.usersService.deleteUser(deleteUserRequest),
+    );
+  }
+
+  async getUsers(emptyRequest: Empty): Promise<GetUsersResponse> {
+    return firstValueFrom(this.usersService.getUsers(emptyRequest));
+  }
+
+  async getUserById(
+    getUserByIdRequest: GetUserByIdRequest,
+  ): Promise<GetUserByIdResponse> {
+    return firstValueFrom(
+      this.usersService.getUserById(getUserByIdRequest),
     );
   }
 }
